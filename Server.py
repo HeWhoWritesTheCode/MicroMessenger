@@ -6,7 +6,7 @@ import threading
 
 # this function will start on a new thread every time a request needs to be read and handled
 # in effect this is the part of the 'server listener' that handles clients
-def handle_request(conn):
+def handle_request(conn, address):
     # set the variable 'data' to the data received throug the connection.
     # The buffer size is 1024 as an arbitrary standard (the amound of data that can be received at once)
     # 'data' will be a bytes object
