@@ -14,11 +14,8 @@ def send_request(data):
     sock.sendall(data.encode())
     # response has to be a global variable so that the functions calling this
     # method can use the data received in the response
-    global response
     # set 'response' to the data from the connection
-    response = sock.recv(1024)
-    # close the socket so that it does not use resources in the background
-    sock.close()
+    return sock.recv(1024)
 
 # test function for carrying out 2+2
 def test_function():
@@ -27,6 +24,9 @@ def test_function():
     # convert the dictionary to a json-form string
     request = json.dumps(request)
     # pass the json to the send_request function so that the request will be sent to the server
-    send_request(request)
+    response = send_request(request)
     # return the server response, which should be the result of the calculation
-    print("The result is",response)
+    return response
+
+# run the test function with test data 2 and 2 and print the result
+print(test_function())
