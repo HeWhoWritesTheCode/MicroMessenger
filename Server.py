@@ -1,6 +1,6 @@
-import socket
-import json
-import threading
+import socket # same as client
+import json # same as client
+import threading # needed to allow multiple client requests to be handled at once
 
 #DEFINING FUNCTIONS
 

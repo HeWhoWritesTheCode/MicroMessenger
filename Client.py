@@ -1,5 +1,6 @@
-import socket
-import json
+import socket # needed for using sockets for networking
+import json # needed to convert dicts to json form
+            # (this is useful since it can convert variables to their values in the json string)
 
 HOST = "127.0.0.1"
 PORT = 65432
