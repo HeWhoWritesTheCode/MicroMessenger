@@ -25,8 +25,12 @@ def test_function():
     request = json.dumps(request)
     # pass the json to the send_request function so that the request will be sent to the server
     response = send_request(request)
-    # return the server response, which should be the result of the calculation
-    return response
+    # decode the response bytes
+    response.decode()
+    # convert the json into a dictionary so data can be accessed more easily
+    response = json.loads(response)
+    # return the data stored in the json response
+    return response["data"]["total"]
 
 # run the test function with test data 2 and 2 and print the result
 print(test_function())

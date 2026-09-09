@@ -27,9 +27,12 @@ def handle_request(conn):
 
 # test function to be activated by the server listener
 def addition(num1,num2):
-    # return the total
-    return  num1 + num2
-
+    # calculate the total
+    total = num1 + num2
+    # put the total into a correctly formatted json response and convert to json string
+    total = json.dumps({"header":{"id":"Test",},"data":{"total":total}})
+    # return the encoded result
+    return total.encode()
 
 # START OF PROGRAM
 
@@ -48,7 +51,10 @@ sock.listen(3)
 # in effect this is the listening part of the 'server listener'
 while True:
     # set conn to a new socket object which can be used to send and receive data from the connection.
-    # Address is set to the address of the connecting client
     conn = sock.accept()
+    # create a new thread object 'thread' which will call the handle_request function to handle
+    # the incomeing request with the accepted socket object as the argument
     thread = threading.Thread(target=handle_request, name="listener", args=(conn))
+    # then all that needs to be done is hand off the client's connection to the thread and then loop
+    # back round to wait to accept more client requests using the loop
     thread.start()
