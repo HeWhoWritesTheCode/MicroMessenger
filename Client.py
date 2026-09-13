@@ -1,6 +1,8 @@
 import socket # needed for using sockets for networking
 import json # needed to convert dicts to json form
             # (this is useful since it can convert variables to their values in the json string)
+import PySimpleGUI as sg # needed for the GUI; abbreviated for ease of use
+
 
 HOST = "127.0.0.1"
 PORT = 65432
@@ -34,4 +36,31 @@ def test_function():
     return response["data"]["total"]
 
 # run the test function with test data 2 and 2 and print the result
-print(test_function())
+# print(test_function())
+
+# direct chat left column
+dc_column = [
+    [sg.Text("Chats",font=(None,25),auto_size_text=False)], # title text element
+    [sg.Button("Test Chat",auto_size_button=False,size=(22,2),font=(None,12))] # button to represent chat selection
+]
+
+# this array will hold all of the elements for the window
+layout =[
+    [sg.Column(dc_column,expand_y=True,size=(None,100)), sg.VerticalSeparator()], # column and separator placed and made to stretch to the bottom of the page
+]
+
+# this is the window object with a title, reference to the layout and specified size
+window = sg.Window("title",layout,size=(1050,592),element_padding=0,margins=(0,0), resizable=True)
+
+# loop to keep the window open as long as the program is running
+while True:
+    # check the window for any 'events' and assign them to variables
+    # continuous reading keeps the window open
+    event, values = window.Read()
+    # if the window is closed, exit the loop, removing the window
+    # this also prevents the program from attempting to read from a closed window
+    if event == sg.WIN_CLOSED:
+        break
+
+# close the window as the program ends
+window.close()
