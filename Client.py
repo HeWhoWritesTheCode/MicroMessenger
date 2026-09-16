@@ -1,11 +1,19 @@
 import socket # needed for using sockets for networking
 import json # needed to convert dicts to json form
             # (this is useful since it can convert variables to their values in the json string)
-import PySimpleGUI as sg # needed for the GUI; abbreviated for ease of use
-
+import PySimpleGUI as sg# needed for the GUI; abbreviated for ease of use
 
 HOST = "127.0.0.1"
 PORT = 65432
+
+# function to re-pack the columns, taking a Tkinter 'widget' and the options
+def repack(widget, option):
+    # set variable to packing info of the widget
+    pack_info = widget.pack_info()
+    # update the packing info
+    pack_info.update(option)
+    # re-pack the widget
+    widget.pack(**pack_info)
 
 #function for sending requests to the server
 def send_request(data):
@@ -38,19 +46,43 @@ def test_function():
 # run the test function with test data 2 and 2 and print the result
 # print(test_function())
 
-# direct chat left column
-dc_column = [
+# direct chat left column, for selecting direct chats and also page switches
+dc_column_left = [
     [sg.Text("Chats",font=(None,25),auto_size_text=False)], # title text element
-    [sg.Button("Test Chat",auto_size_button=False,size=(22,2),font=(None,12))] # button to represent chat selection
+    [sg.Button("Test Chat",auto_size_button=False,font=(None,20),expand_x=True)] # button to represent chat selection
 ]
+
+# direct chat right column, for reading and sending messages
+dc_column_right = [
+    [sg.Text("Test Username",expand_x=True,font=(None,40))], # title
+    [sg.HorizontalSeparator()], # horizontal line
+    [sg.Output(wrap_lines=True,expand_x=True,expand_y=True)], # chat output area - text wrapping enabled
+    [sg.Multiline(wrap_lines=True,expand_x=True,size=(None,3)),sg.Button("Send",font=(None,20))] # input box
+]
+
 
 # this array will hold all of the elements for the window
 layout =[
-    [sg.Column(dc_column,expand_y=True,size=(None,100)), sg.VerticalSeparator()], # column and separator placed and made to stretch to the bottom of the page
+    [
+        sg.Column(dc_column_left,key=("-LEFT-"),expand_y=True,scrollable=True,vertical_scroll_only=True,expand_x=True), # left hand column, made scrollable, expands vertically
+        sg.VerticalSeparator(), # separator between left and right
+        sg.Column(dc_column_right,key=("-RIGHT-"),expand_y=True,expand_x=True), #right hand column, expands vertically
+    ],
 ]
 
 # this is the window object with a title, reference to the layout and specified size
-window = sg.Window("title",layout,size=(1050,592),element_padding=0,margins=(0,0), resizable=True)
+window = sg.Window(
+    "title",
+    layout,size=(1050,592),
+    element_padding=0,margins=(0,0),
+    resizable=True,
+    finalize=True # finalise to be able to access widgets
+)
+
+# set variables to widgets extracted from column elements using keys
+column_left, column_right = window["-LEFT-"].widget, window["-RIGHT-"].widget
+# use the repack function to pack the left column properly before the right
+repack(column_left,{'fill':'y', 'expand':0, 'before':column_right})
 
 # loop to keep the window open as long as the program is running
 while True:
