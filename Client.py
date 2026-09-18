@@ -1,10 +1,25 @@
 import socket # needed for using sockets for networking
 import json # needed to convert dicts to json form
             # (this is useful since it can convert variables to their values in the json string)
-import PySimpleGUI as sg# needed for the GUI; abbreviated for ease of use
+import PySimpleGUI as sg # needed for the GUI; abbreviated for ease of use
+'ASCII comment titles generated with https://patorjk.com/software/taag/#p=display&f=Mono+9&t=Functions&x=none&v=4&h=4&w=80&we=false using font "Mono 9"'
+
+
+# IP of server and port for access
 
 HOST = "127.0.0.1"
 PORT = 65432
+
+
+
+
+# ▄▄▄▄▄▄                        ▄      ▀
+# █      ▄   ▄  ▄ ▄▄    ▄▄▄   ▄▄█▄▄  ▄▄▄     ▄▄▄   ▄ ▄▄    ▄▄▄
+# █▄▄▄▄▄ █   █  █▀  █  █▀  ▀    █      █    █▀ ▀█  █▀  █  █   ▀
+# █      █   █  █   █  █        █      █    █   █  █   █   ▀▀▀▄
+# █      ▀▄▄▀█  █   █  ▀█▄▄▀    ▀▄▄  ▄▄█▄▄  ▀█▄█▀  █   █  ▀▄▄▄▀
+
+
 
 # function to re-pack the columns, taking a Tkinter 'widget' and the options
 def repack(widget, option):
@@ -43,14 +58,24 @@ def test_function():
     # return the data stored in the json response
     return response["data"]["total"]
 
-# run the test function with test data 2 and 2 and print the result
-# print(test_function())
+
+
+# ▄                                    ▄
+# █       ▄▄▄   ▄   ▄   ▄▄▄   ▄   ▄  ▄▄█▄▄   ▄▄▄
+# █      ▀   █  ▀▄ ▄▀  █▀ ▀█  █   █    █    █   ▀
+# █      ▄▀▀▀█   █▄█   █   █  █   █    █     ▀▀▀▄
+# █▄▄▄▄▄ ▀▄▄▀█   ▀█    ▀█▄█▀  ▀▄▄▀█    ▀▄▄  ▀▄▄▄▀
+#                ▄▀
+#               ▀▀
+
+
 
 # direct chat left column, for selecting direct chats and also page switches
 dc_column_left = [
-    [sg.Text("Chats",font=(None,25),auto_size_text=False)], # title text element
+    [sg.Button("Group Chats Page", font=(None,25))], # title text element
     [sg.Button("Test Chat",auto_size_button=False,font=(None,20),expand_x=True)] # button to represent chat selection
 ]
+
 
 # direct chat right column, for reading and sending messages
 dc_column_right = [
@@ -61,21 +86,79 @@ dc_column_right = [
 ]
 
 
-# this array will hold all of the elements for the window
-layout =[
+# this array will hold all of the elements for the direct chat window
+dc_layout =[
     [
-        sg.Column(dc_column_left,key=("-LEFT-"),expand_y=True,scrollable=True,vertical_scroll_only=True,expand_x=True), # left hand column, made scrollable, expands vertically
+        sg.Column(
+            dc_column_left, # use the left hand column layout
+            key=("-LEFT-"), # set the key for repacking
+            expand_y=True, # expand to fill vertical space
+            scrollable=True, # make the column scroallable
+            vertical_scroll_only=True, # leave only the vertical scroll bar
+            expand_x=True), # expand to fill horizontal space
         sg.VerticalSeparator(), # separator between left and right
-        sg.Column(dc_column_right,key=("-RIGHT-"),expand_y=True,expand_x=True), #right hand column, expands vertically
+        sg.Column(
+            dc_column_right, # use the right hand column layout
+            key=("-RIGHT-"), # set the key for repacking
+            expand_y=True, # expand to fill vertical space
+            expand_x=True), # expand to fill horizontal space
     ],
 ]
 
-# this is the window object with a title, reference to the layout and specified size
+# group chat left column, for selecting group chats and also page switches
+gc_column_left = [
+    [sg.Button("Direct Chats Page", font=(None,25))], # title text element
+    [sg.Button("Test Group",auto_size_button=False,font=(None,20),expand_x=True)] # button to represent chat selection
+]
+
+
+# group chat right column, for reading and sending messages
+gc_column_right = [
+    [sg.Text("Test Group Chat Name",expand_x=True,font=(None,40))], # title
+    [sg.HorizontalSeparator()], # horizontal line
+    [sg.Output(wrap_lines=True,expand_x=True,expand_y=True)], # chat output area - text wrapping enabled
+    [sg.Multiline(wrap_lines=True,expand_x=True,size=(None,3)),sg.Button("Send",font=(None,20))] # input box
+]
+
+
+gc_layout = [
+    [
+        sg.Column(
+            gc_column_left, # use the left hand column layout
+            key=("-LEFT-"), # set the key for repacking
+            expand_y=True, # expand to fill vertical space
+            scrollable=True, # make the column scroallable
+            vertical_scroll_only=True, # leave only the vertical scroll bar
+            expand_x=True # expand to fill horizontal space
+        ),
+        sg.VerticalSeparator(), # separator between left and right
+        sg.Column(
+            gc_column_right, # use the right hand column layout
+            key=("-RIGHT-"), # set the key for repacking
+            expand_y=True, # expand to fill vertical space
+            expand_x=True # expand to fill horizontal space
+        ),
+    ],
+]
+
+
+
+# ▄▄▄▄▄                                                    ▄▄▄▄    ▄                    ▄
+# █   ▀█  ▄ ▄▄   ▄▄▄    ▄▄▄▄   ▄ ▄▄   ▄▄▄   ▄▄▄▄▄         █▀   ▀ ▄▄█▄▄   ▄▄▄    ▄ ▄▄  ▄▄█▄▄
+# █▄▄▄█▀  █▀  ▀ █▀ ▀█  █▀ ▀█   █▀  ▀ ▀   █  █ █ █         ▀█▄▄▄    █    ▀   █   █▀  ▀   █
+# █       █     █   █  █   █   █     ▄▀▀▀█  █ █ █             ▀█   █    ▄▀▀▀█   █       █
+# █       █     ▀█▄█▀  ▀█▄▀█   █     ▀▄▄▀█  █ █ █         ▀▄▄▄█▀   ▀▄▄  ▀▄▄▀█   █       ▀▄▄
+
+
+
+# create the dc window with a title, reference to the layout and specified size
 window = sg.Window(
-    "title",
-    layout,size=(1050,592),
-    element_padding=0,margins=(0,0),
-    resizable=True,
+    "Direct Chats", # title of the window
+    dc_layout, # start with direct chat layout
+    size=(1050,592), # set the initial size
+    element_padding=0, # padding to zero to save space
+    margins=(0,0), # elements
+    resizable=True, # window can be resized
     finalize=True # finalise to be able to access widgets
 )
 
@@ -93,6 +176,33 @@ while True:
     # this also prevents the program from attempting to read from a closed window
     if event == sg.WIN_CLOSED:
         break
+    elif event == "Group Chats Page": # change page from dc to gc
+        window.close() # close the old window
+        window = sg.Window(
+            "Group Chats",
+            gc_layout,
+            size=(1050,592),
+            element_padding=0,
+            margins=(0,0),
+            resizable=True,
+            finalize=True
+        )
+        # repack the column elements to fix
+        column_left, column_right = window["-LEFT-"].widget, window["-RIGHT-"].widget
+        repack(column_left,{'fill':'y', 'expand':0, 'before':column_right})
+        window.refresh() # refresh the window to show changes
+    elif event == "Direct Chats Page": # change page from gc to dc
+        window.close() # close the old window
+        window = sg.Window(
+            "Direct Chats",
+            dc_layout,
+            size=(1050,592),
+            element_padding=0,
+            margins=(0,0),
+            resizable=True,
+            finalize=True
+        )
+        window.refresh() # refresh the window to show changes
 
 # close the window as the program ends
 window.close()
