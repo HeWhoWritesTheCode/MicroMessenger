@@ -1,8 +1,17 @@
 import socket # same as client
 import json # same as client
 import threading # needed to allow multiple client requests to be handled at once
+import pymysql # needed to handle database
 
-#DEFINING FUNCTIONS
+
+
+# ▄▄▄▄▄▄                        ▄      ▀
+# █      ▄   ▄  ▄ ▄▄    ▄▄▄   ▄▄█▄▄  ▄▄▄     ▄▄▄   ▄ ▄▄    ▄▄▄
+# █▄▄▄▄▄ █   █  █▀  █  █▀  ▀    █      █    █▀ ▀█  █▀  █  █   ▀
+# █      █   █  █   █  █        █      █    █   █  █   █   ▀▀▀▄
+# █      ▀▄▄▀█  █   █  ▀█▄▄▀    ▀▄▄  ▄▄█▄▄  ▀█▄█▀  █   █  ▀▄▄▄▀
+
+
 
 # this function will start on a new thread every time a request needs to be read and handled
 # in effect this is the part of the 'server listener' that handles clients
@@ -17,12 +26,13 @@ def handle_request(conn, address):
     data = json.loads(data)
     # match-case used to check what the request type is and act apropriately
     match data["header"]["request_type"]:
-        # case for the test function
-        case "Addition Test":
+        case "Addition Test": # case for the test function
             # pass the data received to the function and send back the result
             conn.sendall(addition(data["data"]["num1"],data["data"]["num2"]))
-        # default case
-        case _:
+        case "MESSAGE": # case for send message function
+            # pass the message and chat name to the function
+            message(data["data"]["message"],data["header"]["chat_name"])
+        case _: # default case
             pass
 
 # test function to be activated by the server listener
@@ -34,7 +44,38 @@ def addition(num1,num2):
     # return the encoded result
     return total.encode()
 
-# START OF PROGRAM
+#function for querying data from the database
+def database_request(query):
+    connection = pymysql.connect( # establish tcp connection
+        host="127.0.0.1", # localhost 'loopback' address
+        user="MicroMessenger_Server", # username
+        password="MMSPass456", # password
+        database="MicroMessenger", # database to access
+        port=3306,
+        cursorclass=pymysql.cursors.DictCursor  # set cursor to return dictionary for record
+    )
+
+    try:
+        with connection.cursor() as cursor: # use cursor object just for this connection
+            cursor.execute(query) # sends query and stores the result inside the cursor object
+            result = cursor.fetchall() # fetches all rows of results, returning a list of dictionaries
+            return(result) # return the result
+    finally:
+        connection.close() # closes the connection to not overflow mariadb's limit
+
+
+# function for sending client messages to chats
+def message(message, chat_name):
+    pass # function code to go here
+
+
+
+# ▄▄▄▄▄                                                    ▄▄▄▄    ▄                    ▄
+# █   ▀█  ▄ ▄▄   ▄▄▄    ▄▄▄▄   ▄ ▄▄   ▄▄▄   ▄▄▄▄▄         █▀   ▀ ▄▄█▄▄   ▄▄▄    ▄ ▄▄  ▄▄█▄▄
+# █▄▄▄█▀  █▀  ▀ █▀ ▀█  █▀ ▀█   █▀  ▀ ▀   █  █ █ █         ▀█▄▄▄    █    ▀   █   █▀  ▀   █
+# █       █     █   █  █   █   █     ▄▀▀▀█  █ █ █             ▀█   █    ▄▀▀▀█   █       █
+# █       █     ▀█▄█▀  ▀█▄▀█   █     ▀▄▄▀█  █ █ █         ▀▄▄▄█▀   ▀▄▄  ▀▄▄▀█   █       ▀▄▄
+
 
 
 # create a new socket called 'sock'. AF_INET specifies that the socket will use the IPv4 family.
