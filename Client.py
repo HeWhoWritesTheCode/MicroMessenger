@@ -1,5 +1,6 @@
 import socket # needed for using sockets for networking
-import json # needed to convert dicts to json form
+import json
+from tokenize import String # needed to convert dicts to json form
             # (this is useful since it can convert variables to their values in the json string)
 import PySimpleGUI as sg # needed for the GUI; abbreviated for ease of use
 'ASCII comment titles generated with https://patorjk.com/software/taag/#p=display&f=Mono+9&t=Functions&x=none&v=4&h=4&w=80&we=false using font "Mono 9"'
@@ -12,7 +13,6 @@ PORT = 65432
 
 
 
-
 # ▄▄▄▄▄▄                        ▄      ▀
 # █      ▄   ▄  ▄ ▄▄    ▄▄▄   ▄▄█▄▄  ▄▄▄     ▄▄▄   ▄ ▄▄    ▄▄▄
 # █▄▄▄▄▄ █   █  █▀  █  █▀  ▀    █      █    █▀ ▀█  █▀  █  █   ▀
@@ -21,24 +21,26 @@ PORT = 65432
 
 
 
-# function to re-pack the columns, taking a Tkinter 'widget' and the options
+# function to re-pack the columns, taking a Tkinter widget and the options
 def repack(widget, option):
     # set variable to packing info of the widget
     pack_info = widget.pack_info()
     # update the packing info
     pack_info.update(option)
     # re-pack the widget
-    widget.pack(**pack_info)
+    widget.pack(pack_info)
 
 
 #function for sending requests to the server
-def send_request(data):
+def send_request(data, timeout):
     # create a socket using IPv4 and TCP
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     # connect to the server (localhost currently for development)
     sock.connect((HOST,PORT))
     # send the specified data as UTF-8 binary to the server
     sock.sendall(data.encode())
+    if timeout != None: # None means there is no timeout needed
+        sock.settimeout(timeout) # set timeout in seconds (float)
     # response has to be a global variable so that the functions calling this
     # method can use the data received in the response
     # set 'response' to the data from the connection
@@ -52,13 +54,27 @@ def test_function():
     # convert the dictionary to a json-form string
     request = json.dumps(request)
     # pass the json to the send_request function so that the request will be sent to the server
-    response = send_request(request)
+    response = send_request(request, None)
     # decode the response bytes
     response.decode()
     # convert the json into a dictionary so data can be accessed more easily
     response = json.loads(response)
     # return the data stored in the json response
     return response["data"]["total"]
+
+
+def validate_input(input_text, input_type):
+    match input_type: # check which type of input is given
+        case "message": # case for message inputs
+            if isinstance(input_text,str) == False: # check for wrong type
+                sg.popup("Message input is invalid") # create a error popup
+                return False # return false to whatever called for validation
+            if len(input_text) > 1000 or len(input_text) < 1: # len check
+                sg.popup("Message input is invalid") # create a error popup
+                return False # return false to whatever called for validation
+            else:
+                return True # return true to whatever called for validation
+        case _ : pass # if input_type is wrong, just give up
 
 
 # function to send messages from input to the server
@@ -75,18 +91,13 @@ def send_message(message, current_chat): # message to send + chat to send to
             }
         }
         request = json.dumps(request)
-        send_request(request)
-
-
-def validate_input(input_text, input_type):
-    match input_type: # check which type of input is given
-        case "message": # case for message inputs
-            if len(input_text) > 1000 or len(input_text) < 1: # len check
-                sg.popup("Message input is invalid") # create a error popup
-                return False # return false to whatever called for validation
-            else:
-                return True # return true to whatever called for validation
-        case _ : pass # if input_type is wrong, just give up
+        response = send_request(request, 0.1) # timeout of 0.1 sec
+        response.decode()
+        response = json.loads(response)
+        # check that there is an error in the response
+        if response["data"]["error"] != "None":
+            # produce a popup if there is an error
+            sg.popup(response["data"]["error"])
 
 
 
@@ -194,12 +205,19 @@ main_layout = [[sg.Column(frames,expand_x=True,expand_y=True)]] # main layout
 
 
 
+
 # ▄▄▄▄▄                                                    ▄▄▄▄    ▄                    ▄
 # █   ▀█  ▄ ▄▄   ▄▄▄    ▄▄▄▄   ▄ ▄▄   ▄▄▄   ▄▄▄▄▄         █▀   ▀ ▄▄█▄▄   ▄▄▄    ▄ ▄▄  ▄▄█▄▄
 # █▄▄▄█▀  █▀  ▀ █▀ ▀█  █▀ ▀█   █▀  ▀ ▀   █  █ █ █         ▀█▄▄▄    █    ▀   █   █▀  ▀   █
 # █       █     █   █  █   █   █     ▄▀▀▀█  █ █ █             ▀█   █    ▄▀▀▀█   █       █
 # █       █     ▀█▄█▀  ▀█▄▀█   █     ▀▄▄▀█  █ █ █         ▀▄▄▄█▀   ▀▄▄  ▀▄▄▀█   █       ▀▄▄
+#                       ▄  █
+#                        ▀▀
 
+
+
+print(validate_input("0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789",
+    "message"))
 
 
 # create the window
