@@ -119,9 +119,27 @@ def message(message, chat_name, id_token):
     # trigger a function to send out a chat update notification
     chat_update_notification(chat_name)
 
-def chat_update_notification(chat_name):
-    members = database_request(f"SELECT * FROM memberships WHERE chat_name = '{chat_name}';")
 
+# send update notification to all users in a chat
+def chat_update_notification(chat_name):
+    # get usernames of all members of the chat
+    members = database_request(f"SELECT username FROM memberships WHERE chat_name = '{chat_name}';")
+    # iterate through each of the json obects that corresponds to a username
+    for user in members:
+        # get the username out of the json object, decode to string
+        username = user["username"].decode()
+        # for this user, fetch the IP address and id token
+        member_info = database_request(f"SELECT ip_address,id_token FROM users WHERE username = '{username}';")
+        ip_address = member_info[0]["ip_address"].decode()
+        id_token = member_info[0]["id_token"].decode()
+
+        notification = json.dumps({"header":{"id_token":id_token,"chat_name":chat_name},"data":{"notification":"chat_updated"}})
+        # create a socket using IPv4 and TCP
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # connect to the client using the IP address
+        sock.connect((ip_address,65432))
+        # send the notification as UTF-8 binary to the client
+        sock.sendall(notification.encode())
 
 
 # ▄▄▄▄▄                                                    ▄▄▄▄    ▄                    ▄
@@ -133,6 +151,9 @@ def chat_update_notification(chat_name):
 #                        ▀▀
 
 
+# update notification test
+chat_update_notification("Test_Group")
+
 
 # create a new socket called 'sock'. AF_INET specifies that the socket will use the IPv4 family.
 # SOCK_STREAM specifies TCP connections.
@@ -142,8 +163,6 @@ sock.bind(("127.0.0.1", 65432))
 # enable the server to accpet connections from clients.
 # The int 3 specifies the backlog - which I mentioned as a buffer that will hold many requests coming in at once
 sock.listen(3)
-
-chat_update_notification("Test_Group")
 
 # loop to accept any incoming connections
 # in effect this is the listening part of the 'server listener'

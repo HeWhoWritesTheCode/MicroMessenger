@@ -3,6 +3,7 @@ import json
 from tokenize import String # needed to convert dicts to json form
             # (this is useful since it can convert variables to their values in the json string)
 import PySimpleGUI as sg # needed for the GUI; abbreviated for ease of use
+import threading # for listening for server notifications
 'ASCII comment titles generated with https://patorjk.com/software/taag/#p=display&f=Mono+9&t=Functions&x=none&v=4&h=4&w=80&we=false using font "Mono 9"'
 
 
@@ -41,8 +42,6 @@ def send_request(data, timeout):
     sock.sendall(data.encode())
     if timeout != None: # None means there is no timeout needed
         sock.settimeout(timeout) # set timeout in seconds (float)
-    # response has to be a global variable so that the functions calling this
-    # method can use the data received in the response
     # set 'response' to the data from the connection
     return sock.recv(1024)
 
@@ -99,6 +98,32 @@ def send_message(message, current_chat): # message to send + chat to send to
             # produce a popup if there is an error
             sg.popup(response["data"]["error"])
 
+
+# update a given chat (i.e receive a message)
+def update_chat(chat_name):
+    sg.popup("Notification Received!", chat_name)
+
+
+def notification_listener():
+    print("IT WORKS")
+    # create a socket
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # bind socket to user's IP
+    sock.bind((socket.gethostbyname, 65432))
+    # listen for connections
+    sock.listen(3)
+    while True:
+        # accept connections
+        conn, address = sock.accept()
+        # check if connection came from server IP
+        if address[0] == HOST:
+            # accept data
+            data = conn.recv(2024)
+            # extract chat_name from json
+            chat_name = json.loads(data.decode())["header"]["chat_name"]
+            # update given chat
+            update_chat_thread = threading.Thread(target=update_chat, name="update_chat", args=(chat_name))
+            update_chat_thread.start()
 
 
 # ▄                                    ▄
@@ -216,9 +241,9 @@ main_layout = [[sg.Column(frames,expand_x=True,expand_y=True)]] # main layout
 
 
 
-print(validate_input("0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789",
-    "message"))
-
+# start listening for notifications
+listener_thread = threading.Thread(target=notification_listener, name="update_chat", args=())
+listener_thread.start()
 
 # create the window
 window = sg.Window(
