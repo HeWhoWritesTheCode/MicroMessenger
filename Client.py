@@ -3,8 +3,8 @@ import json # needed to convert dicts to json form
             # (this is useful since it can convert variables to their values in the json string)
 import PySimpleGUI as sg # needed for the GUI; abbreviated for ease of use
 import threading # for listening for server notifications
-import queue # queue for notifications
 from file_read_backwards import FileReadBackwards # needed to read the file backwards
+from time import sleep
 'ASCII comment titles generated with https://patorjk.com/software/taag/#p=display&f=Mono+9&t=Functions&x=none&v=4&h=4&w=80&we=false using font "Mono 9"'
 
 
@@ -13,6 +13,8 @@ HOST = "127.0.0.1"
 PORT = 65432
 # id_token for this Client program
 id_token = "Test_User_1"
+run_listener = threading.Event()
+
 
 
 # ▄▄▄▄▄▄                        ▄      ▀
@@ -35,16 +37,37 @@ def repack(widget, option):
 
 #function for sending requests to the server
 def send_request(data):
+    # stop the listener from running
+    run_listener.clear()
+    # wait so that the listener has stopped
+    sleep(0.1)
+    # set socket back to blocking
+    sock.settimeout(None)
     # send the specified data as UTF-8 binary to the server
     sock.sendall(data.encode())
     # try and receive data (if any)
-    try:
-        # receive data
-        return_data = sock.recv(1024)
-        # return the data
-        return return_data
-    except:
-        pass
+    return_data = bytearray()
+    # reading loop
+    while True:
+        sg.Print("Trying to recv data...", do_not_reroute_stdout=True)
+        packet = sock.recv(1024)
+        sg.Print("Data received", do_not_reroute_stdout=True)
+        # add packet received to data
+        return_data.extend(packet)
+        sg.Print("Total data: " + return_data.decode(), do_not_reroute_stdout=True)
+        try: # check if the data is complete by trying to convert json
+            temp = return_data.decode()
+            sg.Print("Packet decoded", do_not_reroute_stdout=True)
+            temp = json.loads(temp)
+            sg.Print("Json converted.", do_not_reroute_stdout=True)
+            break
+        except: # iterate and read again
+            sg.Print("Packet unfinished.", do_not_reroute_stdout=True)
+
+    # allow the listener to run
+    run_listener.set()
+
+    return return_data
 
 
 # test function for carrying out 2+2
@@ -147,8 +170,8 @@ def update_chat(chat_name):
         sg.Print("Error found in update response, attempting popup...", do_not_reroute_stdout=True)
         # produce a popup if there is an error
         sg.popup(response["error"])
-    # check for confirmation
-    elif response["confirmation"] == True:
+    # proceed if there are no errors
+    else:
         sg.Print("No error, continuing...", do_not_reroute_stdout=True)
         # get all the messages from the data object
         messages = response["data"]
@@ -156,8 +179,8 @@ def update_chat(chat_name):
         # write to the chat history file
         with open(f"./Message_Histories/{chat_name}.jsonl", "a") as chat_file:
             sg.Print("History file opened.", do_not_reroute_stdout=True)
-            # iterate over all the message
-            for index, payload in messages:
+            # iterate over all the messages
+            for index, payload in messages.items():
                 sg.Print("Reading through messages...", do_not_reroute_stdout=True)
                 # construct the json object to append
                 message = json.dumps({index:payload})
@@ -169,15 +192,19 @@ def update_chat(chat_name):
 
 def notification_listener():
     while True:
-        # accept data
-        data = sock.recv(2024)
-        sg.Print("Notification received...", do_not_reroute_stdout=True)
-        # extract chat_name from json
-        chat_name = json.loads(data.decode())["header"]["chat_name"]
-        sg.Print("Chat name extracted from notification: " + chat_name, do_not_reroute_stdout=True)
-        # add the notification to the queue to be picked up
-        notifications.put(chat_name)
-        sg.Print("Notification placed in queue", do_not_reroute_stdout=True)
+        # wait until flag says that the listener can run
+        run_listener.wait()
+        # set a timeout to force polling of the flag
+        sock.settimeout(0.1)
+        try:
+            # accept data
+            data = sock.recv(2024)
+            # extract chat_name from json
+            chat_name = json.loads(data.decode())["header"]["chat_name"]
+            # use the notificaiton to update the chat
+            update_chat(chat_name)
+        except TimeoutError:
+            pass
 
 
 def update_chat_gui(latest_index, chat_name):
@@ -333,14 +360,16 @@ main_layout = [[sg.Column(frames,expand_x=True,expand_y=True)]] # main layout
 
 # create a socket using IPv4 and TCP
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+# bind socket to loopback for testing
+sock.bind(("127.0.0.X",65432))
 # connect to the server (localhost currently for development)
 sock.connect((HOST,PORT))
 
-# make a queue to hold incoming notifications
-notifications = queue.Queue()
+# start a thread to listen for notifications
 notification_listener_thread = threading.Thread(target=notification_listener, name="notifications", args=())
 notification_listener_thread.start()
-
+# set flag allowing the listener to run
+run_listener.set()
 
 
 # create the window
@@ -368,14 +397,12 @@ repack(column_left,{'fill':'y', 'expand':0, 'before':column_right})
 # in future, this will be will be for all groups
 update_chat_gui(0,"Test_Group")
 
+# make sure the chat starts up-to-date
+# in future, this will be will be for all groups
+update_chat("Test_Group")
+
 # loop to keep the window open as long as the program is running
 while True:
-    # check for notifications
-    try:
-        notification = notifications.get_nowait()
-        update_chat(notification)
-    except:
-        pass
 
     # check the window for any 'events' and assign them to variables
     # continuous reading keeps the window open

@@ -4,6 +4,7 @@ import threading # needed to allow multiple client requests to be handled at onc
 import pymysql # needed to handle database
 from file_read_backwards import FileReadBackwards # needed to read the file backwards
 import queue # needed for threading queues
+from time import sleep # needed to add delays and prevent response mixing
 
 # ▄▄▄▄▄▄                        ▄      ▀
 # █      ▄   ▄  ▄ ▄▄    ▄▄▄   ▄▄█▄▄  ▄▄▄     ▄▄▄   ▄ ▄▄    ▄▄▄
@@ -48,17 +49,35 @@ def handle_request(conn, address):
 
 
         # set the variable 'data' to the data received throug the connection.
-        data = conn.recv(1024)
-        print(data)
+        data = bytearray()
+        conn_dropped = False
+        # reading loop
+        while True:
+            packet = conn.recv(1024)
+            # break out of the thread using a var if conn dropped
+            if packet == b'':
+                conn_dropped = True
+                break
+            # add packet received to data
+            data.extend(packet)
+            try: # check if the data is complete by trying to convert json
+                temp = data.decode()
+                print("Packet decoded.")
+                temp = json.loads(temp)
+                print("Json converted.")
+                break
+            except: # iterate and read again
+                print("Packet unfinished")
+
         # terminate if connection dropped
-        if data == b'':
+        if conn_dropped == True:
             print("Connection dropped, attempting to kill thread...")
             break
 
-        # decode the bytes to get the json string
+        # convert data to a dict for processing
         data = data.decode()
-        # decode the json string to get the python dict back
         data = json.loads(data)
+
         # set id_token to id_token received just once
         # and also add the queue to the dict just once
         if id_token == "":
@@ -165,10 +184,11 @@ def send_message(message, chat_name, id_token):
         chat_file.write("\n" + message)
 
     # trigger a function to send out a chat update notification
-    print("Starting chat_update_notification thread with: " + chat_name)
-    threading.Thread(target=chat_update_notification, args=(chat_name,)).start()
-    print("Thread started")
-    print("Attempting to return the confirmation...")
+    chat_update_notification(chat_name)
+
+    # wait so that the responses don't mix
+    sleep(1.0)
+
     # send a confirmation to the server
     return json.dumps({"confirmation":True}).encode()
 
@@ -215,7 +235,7 @@ def receive_message(latest_index, chat_name, id_token):
             "chat_name":chat_name
         },"data":{
             # messages will go in here
-        }
+        }, "error":"None"
     }
 
     # get the file path of the chat
