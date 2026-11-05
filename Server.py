@@ -20,34 +20,19 @@ def handle_request(conn, address):
     id_token = ""
     # create a queue for this thread
     thread_queue = queue.Queue()
+    notification_stop = threading.Event()
+    # pause for ordering notifications
+    notification_unpause = threading.Event()
+    notification_unpause.set()
+    # start the thread to check and send notifications
+    threading.Thread(target=handle_notification,
+        args=(conn,
+            thread_queue,
+            id_token,
+            notification_stop,
+            notification_unpause
+        )).start()
     while True:
-        # check for notification in queue
-        try:
-            print("Attemptign to get a notification...")
-            print("Current state of the queue:\n" + str(thread_queue.get_nowait))
-            # get the chat name from the queue flag
-            chat_name = thread_queue.get_nowait()
-            print("Chat name extracted from queue.")
-            # prepare the notification json
-            notification = json.dumps(
-                {
-                    "header":{
-                        "id_token":id_token,
-                        "chat_name":chat_name
-                    },"data":{
-                        "notification":"chat_updated"}
-                    }
-            )
-            print("Notification json created")
-            print("Attempting to send the notification...")
-            # send the notification
-            conn.sendall(notification.encode())
-            print("Notification sent")
-        except:
-            print("Failed to find a notification.")
-            pass
-
-
         # set the variable 'data' to the data received throug the connection.
         data = bytearray()
         conn_dropped = False
@@ -62,16 +47,17 @@ def handle_request(conn, address):
             data.extend(packet)
             try: # check if the data is complete by trying to convert json
                 temp = data.decode()
-                print("Packet decoded.")
+                print("["+id_token+" HANDLER]: Packet decoded.")
                 temp = json.loads(temp)
-                print("Json converted.")
+                print("["+id_token+" HANDLER]:Json converted.")
                 break
             except: # iterate and read again
-                print("Packet unfinished")
+                print("["+id_token+" HANDLER]:Packet unfinished")
 
         # terminate if connection dropped
         if conn_dropped == True:
-            print("Connection dropped, attempting to kill thread...")
+            print("["+id_token+" HANDLER]:Connection dropped, attempting to kill thread...")
+            notification_stop.set()
             break
 
         # convert data to a dict for processing
@@ -99,8 +85,10 @@ def handle_request(conn, address):
                 conn.sendall(send_message(
                     data["data"]["message"],
                     data["header"]["chat_name"],
-                    data["header"]["id_token"]
+                    data["header"]["id_token"],
+                    notification_unpause
                 ))
+                notification_unpause.set()
             case "UPDATEHISTORY":
                 conn.sendall(receive_message(
                     data["data"]["latest_index"],
@@ -110,6 +98,38 @@ def handle_request(conn, address):
 
             case _: # default case
                 pass
+
+
+# notification handler thread
+def handle_notification(conn, thread_queue, id_token, notification_stop, notification_unpause):
+    print("["+id_token+" NOTIFICATION]:Thread is checking for notifications...")
+    while True:
+        # wait for the pause condition to be allowed
+        notification_unpause.wait()
+        # kill thread if kill flag set
+        if notification_stop.is_set():
+            break
+        try:
+            # get the chat name from the queue flag
+            chat_name = thread_queue.get_nowait()
+            # prepare the notification json
+            notification = json.dumps(
+                {
+                    "header":{
+                        "id_token":id_token,
+                        "chat_name":chat_name
+                    },"data":{
+                        "notification":"chat_updated"}
+                    }
+            )
+            print("["+id_token+" NOTIFICATION]:Notification json created")
+            print("["+id_token+" NOTIFICATION]:Attempting to send the notification...")
+            print("["+id_token+" NOTIFICATION]:Attempting to send to IP: " + conn.getpeername()[0])
+            # send the notification
+            conn.sendall(notification.encode())
+            print("["+id_token+" NOTIFICATION]:Notification sent")
+        except:
+            pass
 
 
 # test function to be activated by the server listener
@@ -144,7 +164,7 @@ def database_request(query):
 
 
 # function for sending client messages to chats
-def send_message(message, chat_name, id_token):
+def send_message(message, chat_name, id_token, notification_unpause):
     # check if token is absent from database
     if database_request(f"SELECT id_token FROM users WHERE id_token = '{id_token}';") == ():
         # send json back with error message
@@ -183,8 +203,10 @@ def send_message(message, chat_name, id_token):
     with open(f".{history_file_path}","a") as chat_file:
         chat_file.write("\n" + message)
 
+    # pause the notification handler while sending confirmation
+    notification_unpause.clear()
     # trigger a function to send out a chat update notification
-    chat_update_notification(chat_name)
+    chat_update_notification(chat_name, id_token)
 
     # wait so that the responses don't mix
     sleep(1.0)
@@ -194,28 +216,29 @@ def send_message(message, chat_name, id_token):
 
 
 # send update notification to all users in a chat
-def chat_update_notification(chat_name):
-    print("Attempting to send chat update notification...")
+def chat_update_notification(chat_name, id_token):
+    print("["+id_token+" HANDLER]:Attempting to send chat update notification...")
     # get usernames of all members of the chat
     members = database_request(f"SELECT username FROM memberships WHERE chat_name = '{chat_name}';")
     # iterate through each of the json obects that corresponds to a username
     for user in members:
-        print("Extracting username of a member...")
+        print("["+id_token+" HANDLER]:Extracting username of a member...")
         # get the username out of the json object, decode to string
         username = user["username"].decode()
+        print("["+id_token+" HANDLER]:Username - " + username)
         # for this user, fetch the IP address and id token
-        id_token = database_request(f"SELECT id_token FROM users WHERE username = '{username}';")[0]["id_token"].decode()
+        user_id = database_request(f"SELECT id_token FROM users WHERE username = '{username}';")[0]["id_token"].decode()
         try:
-            print("Attempting to put notification in queue...")
+            print("["+id_token+" HANDLER]:Attempting to put notification in queue...")
             # get the queue of the thread that handles the client which needs a notification
-            thread_queue = notification_queues[id_token]
+            thread_queue = notification_queues[user_id]
             # put a flag in the queue
             thread_queue.put(chat_name)
-            print("Notification successfully placed in queue.")
+            print("["+id_token+" HANDLER]:Notification successfully placed in queue.")
         except:
-            print("Failed to put notification in queue.")
+            print("["+id_token+" HANDLER]:Failed to put notification in queue.")
             pass
-    print("Chat update thread closing...")
+    print("["+id_token+" HANDLER]:Chat update thread closing...")
 
 def receive_message(latest_index, chat_name, id_token):
     # check for errors
@@ -245,11 +268,11 @@ def receive_message(latest_index, chat_name, id_token):
     with FileReadBackwards(f".{history_file_path}", encoding="utf-8") as file_backwards:
         # read data from the file only once and assign to a variable for re-use
         for line in file_backwards:
-            print("The value read is: " + line)
+            print("["+id_token+" HANDLER]:The value read is: " + line)
             try:
                 message = json.loads(line)
             except:
-                print("Failed to read a message to send back: " + line) # log
+                print("["+id_token+" HANDLER]:Failed to read a message to send back: " + line) # log
                 break
             # get the index of the message read and compare it to latest_index
             if int(list(message.keys())[0]) > int(latest_index):
@@ -257,10 +280,10 @@ def receive_message(latest_index, chat_name, id_token):
                 # add message to data section
                 response["data"].update(message)
             else:
-                print("Passed latest index: " + str(list(message.keys())[0]))
+                print("["+id_token+" HANDLER]:Passed latest index: " + str(list(message.keys())[0]))
                 # if latest index is reached, stop reading
                 break
-    print("The message response to be sent to the client is:", response)
+    print("["+id_token+" HANDLER]:The message response to be sent to the client is:", response)
     # send the messages back to the client
     return json.dumps(response).encode()
 

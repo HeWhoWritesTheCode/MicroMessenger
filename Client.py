@@ -77,7 +77,7 @@ def test_function():
     # convert the dictionary to a json-form string
     request = json.dumps(request)
     # pass the json to the send_request function so that the request will be sent to the server
-    response = send_request(request, None)
+    response = send_request(request)
     # decode the response bytes
     response.decode()
     # convert the json into a dictionary so data can be accessed more easily
@@ -191,6 +191,7 @@ def update_chat(chat_name):
 
 
 def notification_listener():
+    print("Listener running...")
     while True:
         # wait until flag says that the listener can run
         run_listener.wait()
@@ -199,8 +200,11 @@ def notification_listener():
         try:
             # accept data
             data = sock.recv(2024)
+            print(f"Received data:{json.loads(data.decode())}")
             # extract chat_name from json
             chat_name = json.loads(data.decode())["header"]["chat_name"]
+            print("Chat name extracted: " + chat_name)
+            print("Triggering update chat function")
             # use the notificaiton to update the chat
             update_chat(chat_name)
         except TimeoutError:
@@ -361,7 +365,7 @@ main_layout = [[sg.Column(frames,expand_x=True,expand_y=True)]] # main layout
 # create a socket using IPv4 and TCP
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 # bind socket to loopback for testing
-sock.bind(("127.0.0.X",65432))
+sock.bind(("127.0.0.2",65432))
 # connect to the server (localhost currently for development)
 sock.connect((HOST,PORT))
 
