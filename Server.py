@@ -168,12 +168,12 @@ def send_message(message, chat_name, id_token, notification_unpause):
     # check if token is absent from database
     if database_request(f"SELECT id_token FROM users WHERE id_token = '{id_token}';") == ():
         # send json back with error message
-        return json.dumps({"error":"Error: id_token is invalid"})
+        return json.dumps({"error":"Error: id_token is invalid"}).encode()
 
     elif database_request( # uses a subquery to check if the username of the given user (through id_token) is absent from the chat
         f"SELECT * FROM memberships WHERE username = (SELECT username FROM users WHERE id_token = '{id_token}') AND chat_name = '{chat_name}';") == ():
         # send json back with error message
-        return json.dumps({"error":"Error: chat is invalid"})
+        return json.dumps({"error":"Error: chat is invalid"}).encode()
 
     # get the path of the chat history file and set to a variable
     history_file_path = database_request(f"SELECT history FROM chats WHERE chat_name = '{chat_name}';")[0]["history"].decode()
@@ -244,12 +244,12 @@ def receive_message(latest_index, chat_name, id_token):
     # check for errors
     if database_request(f"SELECT id_token FROM users WHERE id_token = '{id_token}';") == ():
         # send json back with error message
-        return json.dumps({"error":"Error: id_token is invalid"})
+        return json.dumps({"error":"Error: id_token is invalid"}).encode()
 
     elif database_request( # uses a subquery to check if the username of the given user (through id_token) is absent from the chat
         f"SELECT * FROM memberships WHERE username = (SELECT username FROM users WHERE id_token = '{id_token}') AND chat_name = '{chat_name}';") == ():
         # send json back with error message
-        return json.dumps({"error":"Error: chat is invalid"})
+        return json.dumps({"error":"Error: chat is invalid"}).encode()
 
     # create the reponse to later add messages to it
     response = {

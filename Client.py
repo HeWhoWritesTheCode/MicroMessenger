@@ -12,7 +12,7 @@ from time import sleep
 HOST = "127.0.0.1"
 PORT = 65432
 # id_token for this Client program
-id_token = "Test_User_1"
+id_token = "Test_User_Absent"
 run_listener = threading.Event()
 
 
@@ -132,18 +132,22 @@ def send_message(message, current_chat): # message to send + chat to send to
 
 # update a given chat (i.e receive a message)
 def update_chat(chat_name):
-    with FileReadBackwards(f"./Message_Histories/{chat_name}.jsonl", encoding="utf-8") as file_backwards:
-        # read data from the file only once and assign to a variable for re-use
-        file_data = file_backwards.readline()
-        # check if the file is empty
-        if file_data == "":
-            latest_index = 0 # set latest index to zero (so next message will be 1)
-        else:
-            # read the last line, load it from a json to dict, get the key from the object
-            # which will be the index
-            latest_index = json.loads(file_data).keys()
-            # convert the dict_key to an int
-            latest_index = int(list(latest_index)[0])
+    try:
+        with FileReadBackwards(f"./Message_Histories/{chat_name}.jsonl", encoding="utf-8") as file_backwards:
+            # read data from the file only once and assign to a variable for re-use
+            file_data = file_backwards.readline()
+            # check if the file is empty
+            if file_data == "":
+                latest_index = 0 # set latest index to zero (so next message will be 1)
+            else:
+                # read the last line, load it from a json to dict, get the key from the object
+                # which will be the index
+                latest_index = json.loads(file_data).keys()
+                # convert the dict_key to an int
+                latest_index = int(list(latest_index)[0])
+    except:
+        sg.popup("")
+        return None
 
     request = { # request JSON dict
         "header":{
@@ -403,7 +407,7 @@ update_chat_gui(0,"Test_Group")
 
 # make sure the chat starts up-to-date
 # in future, this will be will be for all groups
-update_chat("Test_Group")
+update_chat("Not_A_Group")
 
 # loop to keep the window open as long as the program is running
 while True:
@@ -427,7 +431,7 @@ while True:
 
     elif event.startswith("-SEND_MESSAGE"): # send a message
         # use values dict to get message and send the message
-        send_message(values["-TEST_GROUP_INPUT-"],"Test_Group")
+        send_message(values["-TEST_GROUP_INPUT-"],"Not_A_Group")
 
 # close the window as the program ends
 window.close()
